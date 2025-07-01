@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+
+    
+
+    <title>Oracle System Info Dashboard</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { color: #2e6da4; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:hover { background-color: #f9f9f9; }
+
+        form {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        form label {
+            display: inline-block;
+            width: 100px;
+            margin-right: 10px;
+        }
+
+        form input[type="text"],
+        form select {
+            padding: 8px;
+            margin-right: 20px;
+            width: 200px;
+        }
+
+        form button {
+            padding: 8px 16px;
+            background-color: #2e6da4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        form button:hover {
+            background-color: #204d74;
+        }
+
+        .status {
+            padding: 6px 12px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .status-running { background-color: #28a745; }     /* Green */
+        .status-completed { background-color: #007bff; }   /* Blue */
+        .status-failed { background-color: #dc3545; }      /* Red */
+        .status-pending { background-color: #ffc107; color: #000; } /* Yellow with black text */
+
+
+    </style>
+</head>
+<body>
+    <h1>Oracle System Info Dashboard</h1>
+    <h2>Add New System Info</h2>
+    <form th:action="@{/add-system-info}" method="post">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="status">Status:</label>
+        <select id="status" name="status" required>
+            <option value="Running">Running</option>
+            <option value="Completed">Completed</option>
+            <option value="Failed">Failed</option>
+        </select>
+
+        <button type="submit">Add</button>
+    </form>
+
+    <h2>Filter by Status</h2>
+    <form th:action="@{/dashboard/filter}" method="get">
+        <select name="status">
+            <option value="Running">Running</option>
+            <option value="Completed">Completed</option>
+            <option value="Failed">Failed</option>
+            <option value="Pending">Pending</option>
+        </select>
+        <button type="submit">Filter</button>
+        <a th:href="@{/dashboard}" style="margin-left: 10px;">Reset</a>
+    </form>
+
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Status</th>
+        </tr>
+        <tr th:each="info : ${systemInfoList}">
+            <td th:text="${info.id}">1</td>
+            <td th:text="${info.name}">Database Listener</td>
+            <td>
+                <span th:text="${info.status}"
+                    th:class="'status status-' + ${info.status.toLowerCase()}">
+                </span>
+            </td>
+        </tr>
+    </table>
+    <button onclick="exportTableToCSV()">Export to CSV</button>
+
+    <script>
+        function exportTableToCSV() {
+            const table = document.querySelector("table");
+            let csv = [];
+            const rows = table.querySelectorAll("tr");
+            
+            rows.forEach(row => {
+                let cols = row.querySelectorAll("th, td");
+                let rowData = [];
+                cols.forEach(col => rowData.push(col.innerText));
+                csv.push(rowData.join(","));
+            });
+
+            const csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "system_info.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+
+    <button onclick="exportToPDF()">Export to PDF</button>
+
+    <script>
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const table = document.querySelector("table");
+
+            await html2canvas(table).then(canvas => {
+                const imgData = canvas.toDataURL("image/png");
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const imgWidth = pageWidth - 20;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                doc.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                doc.save("system_info.pdf");
+            });
+        }
+    </script>
+
+</body>
+</html>
